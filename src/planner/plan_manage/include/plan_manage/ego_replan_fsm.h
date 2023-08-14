@@ -30,16 +30,16 @@ namespace ego_planner
     /* ---------- flag ---------- */
     enum FSM_EXEC_STATE
     {
-      INIT,
-      WAIT_TARGET,
-      GEN_NEW_TRAJ,
-      REPLAN_TRAJ,
-      EXEC_TRAJ,
-      EMERGENCY_STOP
+      INIT,           // 初始状态
+      WAIT_TARGET,    // 等待目标
+      GEN_NEW_TRAJ,   // 生成新的轨迹
+      REPLAN_TRAJ,    // 重新规划轨迹
+      EXEC_TRAJ,      // 执行轨迹
+      EMERGENCY_STOP  // 紧急停止
     };
-    enum TARGET_TYPE
+    enum TARGET_TYPE     // fsm/flight_type deflut 2
     {
-      MANUAL_TARGET = 1,
+      MANUAL_TARGET = 1, 
       PRESET_TARGET = 2,
       REFENCE_PATH = 3
     };

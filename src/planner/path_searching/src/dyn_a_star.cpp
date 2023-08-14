@@ -33,6 +33,7 @@ void AStar::initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size)
     grid_map_ = occ_map;
 }
 
+// 三种启发式函数
 double AStar::getDiagHeu(GridNodePtr node1, GridNodePtr node2)
 {
     double dx = abs(node1->index(0) - node2->index(0));
@@ -74,6 +75,7 @@ double AStar::getEuclHeu(GridNodePtr node1, GridNodePtr node2)
     return (node2->index - node1->index).norm();
 }
 
+// 从终点出发到起点，返回整个路径
 vector<GridNodePtr> AStar::retrievePath(GridNodePtr current)
 {
     vector<GridNodePtr> path;
@@ -93,12 +95,13 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
     if (!Coord2Index(start_pt, start_idx) || !Coord2Index(end_pt, end_idx))
         return false;
 
+    // 判断起点和终点的位置是否在障碍物中
     if (checkOccupancy(Index2Coord(start_idx)))
     {
         //ROS_WARN("Start point is insdide an obstacle.");
         do
         {
-            start_pt = (start_pt - end_pt).normalized() * step_size_ + start_pt;
+            start_pt = (start_pt - end_pt).normalized() * step_size_ + start_pt; // 不断移动
             if (!Coord2Index(start_pt, start_idx))
                 return false;
         } while (checkOccupancy(Index2Coord(start_idx)));
@@ -115,7 +118,7 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d en
         } while (checkOccupancy(Index2Coord(end_idx)));
     }
 
-    return true;
+    return true; // 成功即可进行下一步
 }
 
 bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt)
@@ -137,11 +140,12 @@ bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_
     // if ( start_pt(0) > -1 && start_pt(0) < 0 )
     //     cout << "start_pt=" << start_pt.transpose() << " end_pt=" << end_pt.transpose() << endl;
 
+    // 在栅格地图中，三维的起点和终点
     GridNodePtr startPtr = GridNodeMap_[start_idx(0)][start_idx(1)][start_idx(2)];
     GridNodePtr endPtr = GridNodeMap_[end_idx(0)][end_idx(1)][end_idx(2)];
 
-    std::priority_queue<GridNodePtr, std::vector<GridNodePtr>, NodeComparator> empty;
-    openSet_.swap(empty);
+    std::priority_queue<GridNodePtr, std::vector<GridNodePtr>, NodeComparator> empty; // 初始化优先队列
+    openSet_.swap(empty);   // 为什么要这样赋空？？？
 
     GridNodePtr neighborPtr = NULL;
     GridNodePtr current = NULL;
@@ -179,6 +183,7 @@ bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_
         }
         current->state = GridNode::CLOSEDSET; //move current node from open set to closed set.
 
+        // 27种移动方式
         for (int dx = -1; dx <= 1; dx++)
             for (int dy = -1; dy <= 1; dy++)
                 for (int dz = -1; dz <= 1; dz++)
@@ -191,11 +196,13 @@ bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_
                     neighborIdx(1) = (current->index)(1) + dy;
                     neighborIdx(2) = (current->index)(2) + dz;
 
+                    // 越界判断
                     if (neighborIdx(0) < 1 || neighborIdx(0) >= POOL_SIZE_(0) - 1 || neighborIdx(1) < 1 || neighborIdx(1) >= POOL_SIZE_(1) - 1 || neighborIdx(2) < 1 || neighborIdx(2) >= POOL_SIZE_(2) - 1)
                     {
                         continue;
                     }
 
+                    // 设定为相邻节点
                     neighborPtr = GridNodeMap_[neighborIdx(0)][neighborIdx(1)][neighborIdx(2)];
                     neighborPtr->index = neighborIdx;
 
@@ -213,9 +220,10 @@ bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_
                         continue;
                     }
 
-                    double static_cost = sqrt(dx * dx + dy * dy + dz * dz);
-                    tentative_gScore = current->gScore + static_cost;
+                    double static_cost = sqrt(dx * dx + dy * dy + dz * dz); // 实际的cost
+                    tentative_gScore = current->gScore + static_cost;       // current node到neighbor node的总花费cost
 
+                    // 是否被探索过
                     if (!flag_explored)
                     {
                         //discover a new node
@@ -225,6 +233,7 @@ bool AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_
                         neighborPtr->fScore = tentative_gScore + getHeu(neighborPtr, endPtr);
                         openSet_.push(neighborPtr); //put neighbor in open set and record it.
                     }
+                    // 检查是否需要更新cost
                     else if (tentative_gScore < neighborPtr->gScore)
                     { //in open set and need update
                         neighborPtr->cameFrom = current;

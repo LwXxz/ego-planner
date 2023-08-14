@@ -1,0 +1,12 @@
+{
+    "python.analysis.extraPaths": [
+        "/home/cc/ego-planner/devel/lib/python2.7/dist-packages",
+        "/home/cc/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages"
+    ],
+    "python.autoComplete.extraPaths": [
+        "/home/cc/ego-planner/devel/lib/python2.7/dist-packages",
+        "/home/cc/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages"
+    ]
+}

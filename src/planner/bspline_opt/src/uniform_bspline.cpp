@@ -19,8 +19,8 @@ namespace ego_planner
     p_ = order;
     interval_ = interval;
 
-    n_ = points.cols() - 1;
-    m_ = n_ + p_ + 1;
+    n_ = points.cols() - 1; // 段数
+    m_ = n_ + p_ + 1;       // 段数+阶数+1
 
     u_ = Eigen::VectorXd::Zero(m_ + 1);
     for (int i = 0; i <= m_; ++i)

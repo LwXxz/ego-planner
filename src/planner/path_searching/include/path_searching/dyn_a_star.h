@@ -32,6 +32,8 @@ struct GridNode
 	GridNodePtr cameFrom{NULL};
 };
 
+// 重写仿函数相当于重载>, greater小根堆, 用于优先队列中，优先队列通过fScore排序，实际fScore=cost+启发cost
+// 助记大于号 greater 小根堆，小于号 less 大根堆
 class NodeComparator
 {
 public:
@@ -53,8 +55,10 @@ private:
 	double getEuclHeu(GridNodePtr node1, GridNodePtr node2);
 	inline double getHeu(GridNodePtr node1, GridNodePtr node2);
 
+	// 将欧氏空间中的值转化为栅格地图中的索引值
 	bool ConvertToIndexAndAdjustStartEndPoints(const Eigen::Vector3d start_pt, const Eigen::Vector3d end_pt, Eigen::Vector3i &start_idx, Eigen::Vector3i &end_idx);
 
+	// 坐标到索引和索引到坐标
 	inline Eigen::Vector3d Index2Coord(const Eigen::Vector3i &index) const;
 	inline bool Coord2Index(const Eigen::Vector3d &pt, Eigen::Vector3i &idx) const;
 
@@ -67,7 +71,7 @@ private:
 	double step_size_, inv_step_size_;
 	Eigen::Vector3d center_;
 	Eigen::Vector3i CENTER_IDX_, POOL_SIZE_;
-	const double tie_breaker_ = 1.0 + 1.0 / 10000;
+	const double tie_breaker_ = 1.0 + 1.0 / 10000;	// 是一个非常小的权值，主要为了破坏对称性，工程中效率更高
 
 	std::vector<GridNodePtr> gridPath_;
 
@@ -89,6 +93,7 @@ public:
 	std::vector<Eigen::Vector3d> getPath();
 };
 
+// 获得启发值
 inline double AStar::getHeu(GridNodePtr node1, GridNodePtr node2)
 {
 	return tie_breaker_ * getDiagHeu(node1, node2);
@@ -101,8 +106,9 @@ inline Eigen::Vector3d AStar::Index2Coord(const Eigen::Vector3i &index) const
 
 inline bool AStar::Coord2Index(const Eigen::Vector3d &pt, Eigen::Vector3i &idx) const
 {
-	idx = ((pt - center_) * inv_step_size_ + Eigen::Vector3d(0.5, 0.5, 0.5)).cast<int>() + CENTER_IDX_;
+	idx = ((pt - center_) * inv_step_size_ + Eigen::Vector3d(0.5, 0.5, 0.5)).cast<int>() + CENTER_IDX_; // 坐标to索引转换公式
 
+	// 检查是否越界
 	if (idx(0) < 0 || idx(0) >= POOL_SIZE_(0) || idx(1) < 0 || idx(1) >= POOL_SIZE_(1) || idx(2) < 0 || idx(2) >= POOL_SIZE_(2))
 	{
 		ROS_ERROR("Ran out of pool, index=%d %d %d", idx(0), idx(1), idx(2));

@@ -6,10 +6,10 @@ namespace ego_planner
 
   void EGOReplanFSM::init(ros::NodeHandle &nh)
   {
-    current_wp_ = 0;
-    exec_state_ = FSM_EXEC_STATE::INIT;
-    have_target_ = false;
-    have_odom_ = false;
+    current_wp_ = 0;                     // waypoint number
+    exec_state_ = FSM_EXEC_STATE::INIT;  // 有限状态机的状态，枚举类型
+    have_target_ = false;                // 是否有接收到目标信息
+    have_odom_ = false;                  // 是否有里程计
 
     /*  fsm param  */
     nh.param("fsm/flight_type", target_type_, -1);
@@ -28,22 +28,23 @@ namespace ego_planner
     }
 
     /* initialize main modules */
-    visualization_.reset(new PlanningVisualization(nh));
+    visualization_.reset(new PlanningVisualization(nh));  // share_ptr.reset(new [class])方法，为PlanningVisalization(nh)申请一块新的内存空间，先释放原有内容并指向他
     planner_manager_.reset(new EGOPlannerManager);
     planner_manager_->initPlanModules(nh, visualization_);
 
     /* callback */
-    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
+    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this); // 每隔一段时间运行一次
     safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
 
     odom_sub_ = nh.subscribe("/odom_world", 1, &EGOReplanFSM::odometryCallback, this);
 
-    bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
+    bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10); // traj_server中完成订阅
     data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
 
-    if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
+    // 两种target的形式对应了planGlobalTrajbyGivenWps()中planGlobalTrajWaypoints() and waypointCallback()中planGlobalTraj()
+    if (target_type_ == TARGET_TYPE::MANUAL_TARGET)       // mannual
       waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
-    else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
+    else if (target_type_ == TARGET_TYPE::PRESET_TARGET)  // hard code的目标
     {
       ros::Duration(1.0).sleep();
       while (ros::ok() && !have_odom_)
@@ -62,9 +63,9 @@ namespace ego_planner
       wps[i](0) = waypoints_[i][0];
       wps[i](1) = waypoints_[i][1];
       wps[i](2) = waypoints_[i][2];
-
-      end_pt_ = wps.back();
     }
+    
+    end_pt_ = wps.back();
     bool success = planner_manager_->planGlobalTrajWaypoints(odom_pos_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(), wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
     for (size_t i = 0; i < (size_t)waypoint_num_; i++)
@@ -108,7 +109,7 @@ namespace ego_planner
 
   void EGOReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
   {
-    if (msg->poses[0].pose.position.z < -0.1)
+    if (msg->poses[0].pose.position.z < -0.1) // 给点不成功
       return;
 
     cout << "Triggered!" << endl;
@@ -119,6 +120,7 @@ namespace ego_planner
     end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
     success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
+    /* 显示插值点 */
     visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
 
     if (success)
@@ -259,7 +261,7 @@ namespace ego_planner
       bool success = callReboundReplan(true, flag_random_poly_init);
       if (success)
       {
-
+        // 成功生成轨迹，改变状态机
         changeFSMExecState(EXEC_TRAJ, "FSM");
         flag_escape_emergency_ = true;
       }
@@ -272,7 +274,7 @@ namespace ego_planner
 
     case REPLAN_TRAJ:
     {
-
+      // 这里又会进入到callReboundReplan()中
       if (planFromCurrentTraj())
       {
         changeFSMExecState(EXEC_TRAJ, "FSM");
@@ -315,7 +317,7 @@ namespace ego_planner
       }
       else
       {
-        changeFSMExecState(REPLAN_TRAJ, "FSM");
+         (REPLAN_TRAJ, "FSM");
       }
       break;
     }
@@ -359,6 +361,7 @@ namespace ego_planner
 
     if (!success)
     {
+      // 后端优化部分
       success = callReboundReplan(true, false);
       //changeFSMExecState(EXEC_TRAJ, "FSM");
       if (!success)
@@ -420,8 +423,9 @@ namespace ego_planner
   bool EGOReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
   {
 
-    getLocalTarget();
+    getLocalTarget(); // 获得局部目标值
 
+    /* 对局部进行重规划 */
     bool plan_success =
         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
     have_new_target_ = false;
